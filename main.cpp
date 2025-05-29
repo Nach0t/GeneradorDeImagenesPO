@@ -26,7 +26,7 @@ const int IMAGE_HEIGHT = 1280;                 ///< Alto de las imágenes genera
 int TARGET_FPS = 50;                           ///< FPS objetivo configurado por el usuario
 int DURATION_SECONDS = 300;                    ///< Duración en segundos
 int NUM_CONSUMERS = 7;                         ///< Número de hilos consumidores
-const std::string outputDir = "../../output";  ///< Carpeta de salida para guardar imágenes
+const std::string outputDir = "../output";  ///< Carpeta de salida para guardar imágenes
 const size_t MAX_QUEUE_SIZE = 200;             ///< Tamaño máximo de la cola
 
 namespace fs = std::filesystem;
