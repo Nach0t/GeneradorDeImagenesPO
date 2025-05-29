@@ -195,6 +195,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Total imágenes guardadas: " << imagesSaved.load() << "\n";
     std::cout << "Total datos escritos: " << totalBytesWritten.load() / (1024 * 1024) << " MB\n";
     std::cout << "FPS reales promedio: " << avgFps << "\n";
+    std::cout << "----------------\n";
 
     return 0;
 }
