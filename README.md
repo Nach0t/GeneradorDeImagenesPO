@@ -41,7 +41,7 @@ Este comando generará imágenes durante 5 minutos (300 segundos) a 50 cuadros p
 
 ## Salida
 
-- Las imágenes se guardan en la carpeta `../../output/` relativa a la ubicación del ejecutable.
+- Las imágenes se guardan en la carpeta `../output/` relativa a la ubicación del ejecutable.
 - El programa elimina y vuelve a crear esta carpeta en cada ejecución.
 - Los archivos se guardan como img_0.jpg, img_1.jpg, ..., etc.
 - Se muestran estadísticas en tiempo real sobre la cantidad de imágenes generadas y los FPS.
