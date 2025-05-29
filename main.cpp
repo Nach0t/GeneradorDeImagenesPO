@@ -1,3 +1,11 @@
+/**
+ * @file main.cpp
+ * @brief Programa multihilo para generar y guardar imágenes aleatorias usando OpenCV.
+ * 
+ * Este programa lanza un hilo productor que genera imágenes a un FPS configurable,
+ * y múltiples hilos consumidores que las guardan como archivos JPEG.
+ */
+
 #include <iostream>
 #include <deque>
 #include <vector>
@@ -13,36 +21,49 @@
 #include <cstdlib>
 #include <string>
 
-const int IMAGE_WIDTH = 1920;
-const int IMAGE_HEIGHT = 1280;
-int TARGET_FPS = 50;
-int DURATION_SECONDS = 300;
-int NUM_CONSUMERS = 7;
-const std::string outputDir = "../../output";
-const size_t MAX_QUEUE_SIZE = 200;
+const int IMAGE_WIDTH = 1920;                  ///< Ancho de las imágenes generadas
+const int IMAGE_HEIGHT = 1280;                 ///< Alto de las imágenes generadas
+int TARGET_FPS = 50;                           ///< FPS objetivo configurado por el usuario
+int DURATION_SECONDS = 300;                    ///< Duración en segundos
+int NUM_CONSUMERS = 7;                         ///< Número de hilos consumidores
+const std::string outputDir = "../../output";  ///< Carpeta de salida para guardar imágenes
+const size_t MAX_QUEUE_SIZE = 200;             ///< Tamaño máximo de la cola
 
 namespace fs = std::filesystem;
 
-// Cola segura con protección de concurrencia
+/**
+ * @brief Cola segura para acceso concurrente entre hilos.
+ * 
+ * Implementa una cola protegida con mutex y condition_variable para sincronización.
+ */
 template<typename T>
 class SafeQueue {
-    std::deque<T> queue;
-    std::mutex mtx;
-    std::condition_variable cv;
+    std::deque<T> queue;           ///< Contenedor subyacente
+    std::mutex mtx;                ///< Mutex para sincronización
+    std::condition_variable cv;   ///< Variable de condición para bloqueo/espera
 
 public:
+    /**
+     * @brief Inserta un elemento en la cola.
+     * @param value Elemento a insertar.
+     */
     void push(T&& value) {
         std::unique_lock<std::mutex> lock(mtx);
         queue.emplace_back(std::move(value));
         cv.notify_one();
     }
 
-    // Nuevo método pop con control de término
+    /**
+     * @brief Extrae un elemento de la cola de forma segura.
+     * @param value Referencia donde se colocará el elemento extraído.
+     * @param running Bandera para saber si el productor sigue activo.
+     * @return true si se extrajo un elemento, false si se detuvo.
+     */
     bool pop(T& value, const std::atomic<bool>& running) {
         std::unique_lock<std::mutex> lock(mtx);
         cv.wait(lock, [&] { return !queue.empty() || !running.load(); });
 
-        if (queue.empty()) return false;  // Salir si no hay más imágenes y se detuvo
+        if (queue.empty()) return false;
         value = std::move(queue.front());
         queue.pop_front();
         return true;
@@ -63,21 +84,29 @@ public:
     }
 };
 
+// Variables globales
 SafeQueue<cv::Mat> imageQueue;
-
 std::atomic<bool> running(true);
 std::atomic<int> imagesGenerated(0);
 std::atomic<int> imagesSaved(0);
 std::atomic<size_t> totalBytesWritten(0);
 
-// Genera una imagen aleatoria
+/**
+ * @brief Genera una imagen aleatoria usando valores RGB aleatorios.
+ * @return Imagen generada.
+ */
 cv::Mat generateRandomImage() {
     thread_local cv::Mat img(IMAGE_HEIGHT, IMAGE_WIDTH, CV_8UC3);
     cv::randu(img, cv::Scalar::all(0), cv::Scalar::all(255));
-    return img.clone();  // Clonar para evitar conflictos entre hilos
+    return img.clone();
 }
 
-// Productor de imágenes
+/**
+ * @brief Función ejecutada por el hilo productor de imágenes.
+ * 
+ * Genera imágenes a un ritmo constante definido por TARGET_FPS,
+ * y las coloca en una cola compartida.
+ */
 void imageProducer() {
     using namespace std::chrono;
     auto interval = milliseconds(1000 / TARGET_FPS);
@@ -88,7 +117,6 @@ void imageProducer() {
         auto start = steady_clock::now();
         auto img = generateRandomImage();
 
-        // Espera si la cola está llena
         while (imageQueue.size() >= MAX_QUEUE_SIZE && running.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(milliseconds(1));
         }
@@ -107,16 +135,21 @@ void imageProducer() {
         std::this_thread::sleep_until(start + interval);
     }
 
-    imageQueue.notify_all();  // Despertar consumidores al terminar
+    imageQueue.notify_all();
 }
 
-// Consumidores que guardan imágenes
+/**
+ * @brief Función ejecutada por los hilos consumidores.
+ * 
+ * Cada consumidor extrae imágenes de la cola y las guarda en disco en formato JPEG.
+ * @param id ID del consumidor.
+ */
 void imageConsumer(int id) {
     std::vector<int> params = { cv::IMWRITE_JPEG_QUALITY, 85 };
     while (true) {
         cv::Mat img;
         if (!imageQueue.pop(img, running)) {
-            break;  // Salir si ya no se generan más imágenes
+            break;
         }
 
         int index = imagesSaved.fetch_add(1, std::memory_order_relaxed);
@@ -133,7 +166,16 @@ void imageConsumer(int id) {
     }
 }
 
-// Función principal
+/**
+ * @brief Función principal del programa.
+ * 
+ * Lanza el hilo productor y múltiples hilos consumidores, espera la duración especificada,
+ * y luego muestra estadísticas finales del proceso.
+ * 
+ * @param argc Cantidad de argumentos.
+ * @param argv Argumentos de línea de comandos: duración, FPS, consumidores.
+ * @return Código de salida del programa.
+ */
 int main(int argc, char* argv[]) {
     if (argc != 4) {
         std::cerr << "Error: Debes ingresar los 3 parámetros requeridos.\n";
@@ -159,7 +201,6 @@ int main(int argc, char* argv[]) {
               << " fps durante " << DURATION_SECONDS
               << " segundos usando " << NUM_CONSUMERS << " hilos consumidores...\n";
 
-    // Preparar carpeta de salida
     if (fs::exists(outputDir)) {
         fs::remove_all(outputDir);
         std::cout << "[INFO] Carpeta de salida eliminada.\n";
@@ -169,19 +210,16 @@ int main(int argc, char* argv[]) {
 
     auto startTime = std::chrono::steady_clock::now();
 
-    // Lanzar productor y consumidores
     std::thread producer(imageProducer);
     std::vector<std::thread> consumersThreads;
     for (int i = 0; i < NUM_CONSUMERS; ++i) {
         consumersThreads.emplace_back(imageConsumer, i);
     }
 
-    // Esperar tiempo de duración
     std::this_thread::sleep_for(std::chrono::seconds(DURATION_SECONDS));
     running.store(false);
-    imageQueue.notify_all();  // Despertar hilos que podrían estar bloqueados
+    imageQueue.notify_all();
 
-    // Unir hilos
     producer.join();
     for (auto& c : consumersThreads) c.join();
 
@@ -189,7 +227,6 @@ int main(int argc, char* argv[]) {
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
     double avgFps = imagesGenerated.load() * 1000.0 / ms;
 
-    // Resumen final
     std::cout << "----- RESUMEN -----\n";
     std::cout << "Total imágenes generadas: " << imagesGenerated.load() << "\n";
     std::cout << "Total imágenes guardadas: " << imagesSaved.load() << "\n";
