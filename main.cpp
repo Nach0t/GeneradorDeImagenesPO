@@ -104,20 +104,21 @@ cv::Mat generateRandomImage() {
 /**
  * @brief Función ejecutada por el hilo productor de imágenes.
  * 
- * Genera imágenes a un ritmo constante definido por TARGET_FPS,
- * y las coloca en una cola compartida.
+ * Genera una cantidad fija de imágenes a un ritmo constante definido por
+ * TARGET_FPS y las coloca en una cola compartida.
+ * @param totalImages Cantidad total de imágenes a generar.
  */
-void imageProducer() {
+void imageProducer(int totalImages) {
     using namespace std::chrono;
     auto interval = milliseconds(1000 / TARGET_FPS);
     auto lastPrint = steady_clock::now();
     int fpsCounter = 0;
 
-    while (running.load(std::memory_order_relaxed)) {
+    for (int i = 0; i < totalImages; ++i) {
         auto start = steady_clock::now();
         auto img = generateRandomImage();
 
-        while (imageQueue.size() >= MAX_QUEUE_SIZE && running.load(std::memory_order_relaxed)) {
+        while (imageQueue.size() >= MAX_QUEUE_SIZE) {
             std::this_thread::sleep_for(milliseconds(1));
         }
 
@@ -208,19 +209,20 @@ int main(int argc, char* argv[]) {
     fs::create_directories(outputDir);
     std::cout << "[INFO] Carpeta de salida creada.\n";
 
+    int totalImages = TARGET_FPS * DURATION_SECONDS;
+
     auto startTime = std::chrono::steady_clock::now();
 
-    std::thread producer(imageProducer);
+    std::thread producer(imageProducer, totalImages);
     std::vector<std::thread> consumersThreads;
     for (int i = 0; i < NUM_CONSUMERS; ++i) {
         consumersThreads.emplace_back(imageConsumer, i);
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(DURATION_SECONDS));
+    producer.join();
     running.store(false);
     imageQueue.notify_all();
 
-    producer.join();
     for (auto& c : consumersThreads) c.join();
 
     auto endTime = std::chrono::steady_clock::now();
@@ -232,6 +234,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Total imágenes guardadas: " << imagesSaved.load() << "\n";
     std::cout << "Total datos escritos: " << totalBytesWritten.load() / (1024 * 1024) << " MB\n";
     std::cout << "FPS reales promedio: " << avgFps << "\n";
+    std::cout << "Imágenes pendientes en cola: " << imageQueue.size() << "\n";
     std::cout << "----------------\n";
 
     return 0;
