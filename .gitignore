@@ -1,1 +1,57 @@
+# === Archivos y carpetas del sistema operativo ===
+.DS_Store           # macOS
+Thumbs.db           # Windows
+desktop.ini         # Windows
+
+# === Archivos de respaldo / temporales ===
+*.log
+*.tmp
+*.bak
+*.swp
+*~
+*.old
+*.orig
+*.sav
+
+# === Compilación de C/C++ ===
+*.o
+*.obj
+*.so
+*.a
+*.out
+*.exe
+*.dll
+*.gch
+*.pch
+
+# === CMake ===
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
 build/
+_build/
+out/
+compile_commands.json
+
+# === VS Code ===
+.vscode/
+*.code-workspace
+
+# === WSL específico (por si se mezclan rutas cruzadas o montajes) ===
+mnt/
+
+# === Archivos generados por OpenCV (opcional, depende del uso) ===
+*.xml
+*.yaml
+*.yml
+
+# === Doxygen ===
+doc/
+html/
+latex/
+*.dox
+
+# === Ignorar binarios o librerías opcionales ===
+bin/
+lib/
