@@ -37,16 +37,24 @@ Ejecuta el programa desde la carpeta `build` con los siguientes parámetros:
 ./random_image_generator -f 50 -t 300 -h 7
 ```
 
-Este comando generará imágenes durante 5 minutos (300 segundos) a 50 cuadros por segundo utilizando 7 hilos consumidores.
+Este comando generará imágenes durante 5 minutos (300 segundos) a 50 fotogramas por segundo utilizando 7 hilos consumidores para guardar las imágenes.
 
 ## Salida
 
 - Las imágenes se guardan en la carpeta `../output/` relativa a la ubicación del ejecutable.
 - El programa elimina y vuelve a crear esta carpeta en cada ejecución.
 - Los archivos se guardan como img_0.jpg, img_1.jpg, ..., etc.
-- Se muestran estadísticas en tiempo real sobre la cantidad de imágenes generadas y los FPS.
+- El programa imprime estadísticas por segundo (FPS, imágenes encoladas, descartadas).
+- Al finalizar, muestra un resumen global con métricas de rendimiento y pérdidas.
+  
+## Métricas mostradas
+- Total de imágenes generadas.
+- Imágenes encoladas y guardadas.
+- Imágenes descartadas por retraso o cola llena.
+- FPS real promedio de guardado.
 
 ## Notas
 
+- El sistema descarta imágenes cuando la cola está llena para mantener el ritmo de generación.
 - El programa crea y limpia automáticamente la carpeta `output` antes de comenzar.
 - Se recomienda ejecutar en sistemas con múltiples núcleos para aprovechar el paralelismo.
